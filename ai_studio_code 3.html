@@ -1,0 +1,1005 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>SproutCare 芽芽小夥伴 - 霧化吸入陪伴原型</title>
+  <style>
+    :root {
+      --bg-gradient: linear-gradient(135deg, #FFFDF8 0%, #EBF6EF 100%);
+      --card-bg: rgba(255, 255, 255, 0.94);
+      --primary-green: #67B782;
+      --primary-hover: #52A26D;
+      --dark-green: #356744;
+      --leaf-green: #85C872;
+      --soft-cream: #FFF7ED;
+      --text-main: #4A3B32;
+      --text-muted: #7A6C63;
+      --border-color: #E2EDE5;
+      --coral-accent: #FFA07A;
+      --btn-secondary-bg: #FFFFFF;
+      --btn-secondary-border: #D5E5DA;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+      -webkit-user-select: none;
+      -webkit-tap-highlight-color: transparent;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", sans-serif;
+    }
+
+    body {
+      background: var(--bg-gradient);
+      color: var(--text-main);
+      height: 100vh;
+      width: 100vw;
+      overflow: hidden;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      position: relative;
+    }
+
+    /* 頂部常駐全螢幕控制按鈕 */
+    .btn-fullscreen {
+      position: absolute;
+      top: 12px;
+      right: 16px;
+      z-index: 100;
+      background: rgba(255, 255, 255, 0.85);
+      border: 1.5px solid var(--border-color);
+      border-radius: 20px;
+      padding: 6px 14px;
+      font-size: 0.85rem;
+      font-weight: bold;
+      color: var(--dark-green);
+      cursor: pointer;
+      backdrop-filter: blur(4px);
+      box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+      transition: all 0.2s;
+    }
+    .btn-fullscreen:active {
+      transform: scale(0.95);
+    }
+
+    /* 浮動雲朵與背景裝飾 */
+    .bg-decor {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      overflow: hidden;
+      z-index: 0;
+    }
+    .cloud {
+      position: absolute;
+      background: #FFFFFF;
+      border-radius: 50px;
+      opacity: 0.65;
+      animation: floatCloud 32s linear infinite;
+    }
+    .cloud-1 { width: 140px; height: 45px; top: 12%; left: -160px; }
+    .cloud-2 { width: 190px; height: 55px; top: 22%; left: -220px; animation-delay: -16s; }
+
+    @keyframes floatCloud {
+      from { transform: translateX(0); }
+      to { transform: translateX(calc(100vw + 320px)); }
+    }
+
+    /* 橫向主視窗容器 */
+    .app-viewport {
+      position: relative;
+      width: 100vw;
+      height: 100vh;
+      max-width: 1280px;
+      max-height: 820px;
+      display: flex;
+      flex-direction: column;
+      z-index: 1;
+    }
+
+    /* 畫面切換基底 */
+    .screen {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 16px 28px;
+      opacity: 0;
+      pointer-events: none;
+      transform: scale(0.98);
+      transition: opacity 0.35s ease, transform 0.35s ease;
+    }
+    .screen.active {
+      opacity: 1;
+      pointer-events: auto;
+      transform: scale(1);
+    }
+
+    /* 按鈕樣式 */
+    .btn {
+      border: none;
+      outline: none;
+      cursor: pointer;
+      font-family: inherit;
+      font-weight: bold;
+      border-radius: 36px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 6px 14px rgba(103, 183, 130, 0.2);
+      transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+    }
+    .btn:active {
+      transform: scale(0.96);
+      box-shadow: 0 2px 6px rgba(0,0,0,0.12);
+    }
+    .btn-primary {
+      background: linear-gradient(135deg, #74C991 0%, #4FA36C 100%);
+      color: #FFFFFF;
+      font-size: 1.45rem;
+      padding: 14px 40px;
+      letter-spacing: 1px;
+    }
+    .btn-secondary {
+      background: var(--btn-secondary-bg);
+      color: var(--text-main);
+      font-size: 1.1rem;
+      padding: 10px 20px;
+      border: 2px solid var(--btn-secondary-border);
+    }
+    .btn-coral {
+      background: linear-gradient(135deg, #FFAE9A 0%, #FA755F 100%);
+      color: #FFFFFF;
+      font-size: 1.1rem;
+      padding: 10px 20px;
+    }
+
+    /* 首頁種子視覺與設定 */
+    .home-hero {
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      justify-content: center;
+      gap: 36px;
+      width: 100%;
+      max-width: 920px;
+    }
+    .home-left {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .seed-bobbing {
+      width: 180px;
+      height: 180px;
+      animation: gentleBob 3.2s ease-in-out infinite;
+    }
+    @keyframes gentleBob {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-10px); }
+    }
+
+    .home-right {
+      background: var(--card-bg);
+      border-radius: 32px;
+      padding: 20px 24px;
+      border: 3px solid var(--border-color);
+      box-shadow: 0 12px 28px rgba(78, 128, 96, 0.08);
+      max-width: 480px;
+      width: 100%;
+    }
+
+    h1.app-title {
+      font-size: 2.2rem;
+      color: var(--dark-green);
+      margin-bottom: 6px;
+      text-align: center;
+    }
+    p.app-subtitle {
+      font-size: 1.05rem;
+      color: var(--text-muted);
+      margin-bottom: 16px;
+      text-align: center;
+    }
+
+    /* 時間選項區 */
+    .time-selector-title {
+      font-size: 0.95rem;
+      font-weight: bold;
+      color: var(--dark-green);
+      margin-bottom: 8px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .time-chips-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+    .time-chip {
+      background: #FFFFFF;
+      border: 2px solid var(--border-color);
+      border-radius: 18px;
+      padding: 10px 6px;
+      text-align: center;
+      font-size: 0.95rem;
+      font-weight: bold;
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .time-chip.active {
+      background: #EAF7ED;
+      border-color: var(--primary-green);
+      color: var(--dark-green);
+      box-shadow: 0 4px 10px rgba(103, 183, 130, 0.2);
+    }
+    .custom-time-box {
+      display: none;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      margin-bottom: 14px;
+      background: #F8FAF7;
+      padding: 8px 12px;
+      border-radius: 16px;
+      border: 1.5px dashed var(--border-color);
+    }
+    .custom-time-box.show {
+      display: flex;
+    }
+    .custom-input {
+      width: 80px;
+      padding: 6px 8px;
+      border: 2px solid var(--border-color);
+      border-radius: 12px;
+      text-align: center;
+      font-size: 1.1rem;
+      font-weight: bold;
+      color: var(--text-main);
+      outline: none;
+    }
+    .custom-input:focus {
+      border-color: var(--primary-green);
+    }
+
+    /* 進行中陪伴雙欄排版 (手機/平板橫向適應) */
+    .session-grid {
+      width: 100%;
+      height: 90%;
+      display: grid;
+      grid-template-columns: 1.1fr 0.9fr;
+      gap: 20px;
+      align-items: center;
+    }
+
+    .plant-panel {
+      background: var(--card-bg);
+      border-radius: 32px;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px;
+      border: 3.5px solid #F0F7F2;
+      box-shadow: 0 12px 28px rgba(78, 128, 96, 0.08);
+      position: relative;
+    }
+    .stage-badge {
+      background: #EBF7EE;
+      color: var(--dark-green);
+      padding: 5px 16px;
+      border-radius: 20px;
+      font-size: 1rem;
+      font-weight: 700;
+    }
+    .plant-avatar-container {
+      width: 220px;
+      height: 220px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+    }
+    .breath-indicator {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.95rem;
+      color: #557962;
+      background: #E8F4FC;
+      padding: 6px 16px;
+      border-radius: 20px;
+      animation: breathPulse 4s ease-in-out infinite;
+    }
+    @keyframes breathPulse {
+      0%, 100% { transform: scale(1); opacity: 0.85; }
+      50% { transform: scale(1.04); opacity: 1; }
+    }
+
+    .info-panel {
+      background: var(--card-bg);
+      border-radius: 32px;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 20px;
+      border: 3.5px solid #F5FAF6;
+      box-shadow: 0 12px 28px rgba(78, 128, 96, 0.08);
+    }
+
+    /* 倒數計時大數字 */
+    .clock-card {
+      background: #FAF7F2;
+      border-radius: 24px;
+      padding: 12px 16px;
+      text-align: center;
+      border: 2px dashed #E5DBD0;
+    }
+    .clock-time {
+      font-family: monospace;
+      font-size: 3.8rem;
+      font-weight: 800;
+      color: var(--text-main);
+      line-height: 1;
+      letter-spacing: 1px;
+    }
+    .clock-desc {
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      margin-top: 4px;
+      font-weight: 600;
+    }
+
+    /* 進度條 */
+    .growth-progress-wrap {
+      margin: 10px 0;
+    }
+    .growth-header {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 6px;
+      font-weight: bold;
+      font-size: 0.95rem;
+      color: var(--dark-green);
+    }
+    .progress-track {
+      width: 100%;
+      height: 20px;
+      background: #ECE5DC;
+      border-radius: 14px;
+      overflow: hidden;
+      padding: 2.5px;
+    }
+    .progress-bar-fill {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, #8CD9A0 0%, #4EB76C 100%);
+      border-radius: 10px;
+      transition: width 0.25s ease-out;
+    }
+    .milestone-tags {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 4px;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      font-weight: 600;
+    }
+
+    .btn-controls-row {
+      display: flex;
+      gap: 10px;
+    }
+    .btn-controls-row .btn {
+      flex: 1;
+    }
+
+    /* 完成花園畫面 */
+    .finish-card {
+      background: var(--card-bg);
+      border-radius: 40px;
+      padding: 28px 48px;
+      text-align: center;
+      border: 4px solid #E1F4E6;
+      box-shadow: 0 16px 36px rgba(0,0,0,0.06);
+      max-width: 760px;
+      width: 90%;
+    }
+    .garden-cheer {
+      display: flex;
+      gap: 16px;
+      justify-content: center;
+      align-items: flex-end;
+      margin: 14px 0;
+    }
+    .flower-bounce {
+      animation: bounce 1.8s ease-in-out infinite alternate;
+    }
+    .flower-bounce:nth-child(2) {
+      animation-delay: 0.3s;
+      transform: scale(1.15);
+    }
+    .flower-bounce:nth-child(3) {
+      animation-delay: 0.6s;
+    }
+    @keyframes bounce {
+      0% { transform: translateY(0); }
+      100% { transform: translateY(-12px); }
+    }
+
+    /* 免責宣告 */
+    .disclaimer-text {
+      position: absolute;
+      bottom: 6px;
+      font-size: 0.72rem;
+      color: #92A396;
+      text-align: center;
+      width: 100%;
+      pointer-events: none;
+    }
+
+    /* 手機直向時的溫馨提示覆蓋層 */
+    .portrait-warning {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: #FFFFFF;
+      z-index: 9999;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      text-align: center;
+    }
+    @media (orientation: portrait) and (max-width: 600px) {
+      .portrait-warning {
+        display: flex;
+      }
+    }
+
+    .svg-full {
+      width: 100%;
+      height: 100%;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- 手機直向旋轉提示 -->
+  <div class="portrait-warning">
+    <div style="font-size: 3.5rem; margin-bottom: 12px;">📱🔄</div>
+    <h3 style="color: var(--dark-green); margin-bottom: 8px;">請將螢幕橫向放置</h3>
+    <p style="color: var(--text-muted); font-size: 0.95rem;">
+      SproutCare 芽芽小夥伴橫著看最舒服、最好玩喔！
+    </p>
+  </div>
+
+  <!-- 全螢幕切換按鈕 -->
+  <button class="btn-fullscreen" id="btn-toggle-fs">⛶ 全螢幕</button>
+
+  <!-- 背景漂浮雲朵 -->
+  <div class="bg-decor">
+    <div class="cloud cloud-1"></div>
+    <div class="cloud cloud-2"></div>
+  </div>
+
+  <div class="app-viewport">
+    
+    <!-- 畫面 1: 首頁 / 設定時間 -->
+    <section id="screen-home" class="screen active">
+      <div class="home-hero">
+        
+        <div class="home-left">
+          <div class="seed-bobbing">
+            <svg class="svg-full" viewBox="0 0 200 200" fill="none">
+              <ellipse cx="100" cy="165" rx="75" ry="22" fill="#E8D9CB" />
+              <ellipse cx="100" cy="160" rx="65" ry="16" fill="#D3BFAF" />
+              <!-- 種子身體 -->
+              <ellipse cx="100" cy="132" rx="35" ry="42" fill="#C59263" transform="rotate(-5 100 132)"/>
+              <!-- 腮紅 -->
+              <circle cx="89" cy="136" r="4.5" fill="#FFA5A5" opacity="0.8"/>
+              <circle cx="113" cy="134" r="4.5" fill="#FFA5A5" opacity="0.8"/>
+              <!-- 瞇瞇眼與微笑 -->
+              <path d="M85 128 Q89 123 93 128" stroke="#4A3423" stroke-width="2.5" stroke-linecap="round"/>
+              <path d="M109 126 Q113 121 117 126" stroke="#4A3423" stroke-width="2.5" stroke-linecap="round"/>
+              <path d="M98 138 Q101 142 104 138" stroke="#4A3423" stroke-width="2" stroke-linecap="round"/>
+              <!-- 噴霧氣泡提示 -->
+              <path d="M136 100 Q146 95 150 106" stroke="#88CEEB" stroke-width="2.5" stroke-linecap="round" stroke-dasharray="3 3"/>
+              <path d="M145 88 Q155 83 158 92" stroke="#88CEEB" stroke-width="2.5" stroke-linecap="round" stroke-dasharray="2 3"/>
+            </svg>
+          </div>
+          <span style="font-size: 0.95rem; font-weight: bold; color: #627F6D; margin-top: 6px;">
+            小種子正準備喝水長大 🌱
+          </span>
+        </div>
+
+        <div class="home-right">
+          <h1 class="app-title">SproutCare 芽芽小夥伴</h1>
+          <p class="app-subtitle">放慢呼吸，陪伴每一次的霧化吸收時光！</p>
+
+          <div class="time-selector-title">
+            <span>⚙️ 設定吸入時間（由成人操作）</span>
+          </div>
+
+          <div class="time-chips-grid" id="time-chips">
+            <div class="time-chip" data-mode="preset" data-seconds="900">15 分鐘</div>
+            <div class="time-chip" data-mode="preset" data-seconds="1800">30 分鐘</div>
+            <div class="time-chip active" data-mode="test" data-seconds="30">30秒 (測試)</div>
+            <div class="time-chip" data-mode="test" data-seconds="60">1分 (測試)</div>
+            <div class="time-chip" data-mode="test" data-seconds="180">3分 (測試)</div>
+            <div class="time-chip" data-mode="custom">自訂時間</div>
+          </div>
+
+          <div class="custom-time-box" id="custom-time-box">
+            <label for="custom-min" style="font-size: 0.9rem; font-weight: bold;">分鐘：</label>
+            <input type="number" id="custom-min" class="custom-input" min="1" max="60" value="5">
+            <label for="custom-sec" style="font-size: 0.9rem; font-weight: bold;">秒數：</label>
+            <input type="number" id="custom-sec" class="custom-input" min="0" max="59" value="0">
+          </div>
+
+          <button class="btn btn-primary" id="btn-start" style="width: 100%;">
+            🌱 戴好面罩，開始陪伴！
+          </button>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- 畫面 2: 進行中互動與倒數計時 -->
+    <section id="screen-session" class="screen">
+      <div class="session-grid">
+        
+        <!-- 左側：植物視覺 -->
+        <div class="plant-panel">
+          <div class="stage-badge" id="stage-badge">生長階段：沈睡種子 (0%)</div>
+
+          <div class="plant-avatar-container" id="plant-container">
+            <!-- 動態繪製 SVG -->
+          </div>
+
+          <div class="breath-indicator">
+            <span>🌬️</span>
+            <span>輕輕吸氣、慢慢吐氣，小芽在喝霧氣喔</span>
+          </div>
+        </div>
+
+        <!-- 右側：計時與進度資訊 -->
+        <div class="info-panel">
+          <div>
+            <div class="growth-header">
+              <span>成長總進度</span>
+              <span id="progress-text" style="font-size: 1.15rem; font-weight: 800; color: var(--dark-green);">0%</span>
+            </div>
+            
+            <div class="growth-progress-wrap">
+              <div class="progress-track">
+                <div class="progress-bar-fill" id="progress-bar"></div>
+              </div>
+              <div class="milestone-tags">
+                <span>0% 種子</span>
+                <span>30% 發芽</span>
+                <span>60% 長葉</span>
+                <span>100% 開花</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- 大時鐘 -->
+          <div class="clock-card">
+            <div class="clock-time" id="clock-display">00:30</div>
+            <div class="clock-desc">剩餘吸入陪伴時間</div>
+          </div>
+
+          <!-- 操作按鈕 -->
+          <div class="btn-controls-row">
+            <button class="btn btn-secondary" id="btn-pause-resume">
+              ⏸️ 暫停
+            </button>
+            <button class="btn btn-secondary" id="btn-restart" style="color: #8C5A4D;">
+              🔄 重新開始
+            </button>
+            <button class="btn btn-secondary" id="btn-stop-exit" style="color: var(--text-muted); flex: 0.8;">
+              🏠 返回
+            </button>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- 畫面 3: 治療完成歡慶花園 -->
+    <section id="screen-complete" class="screen">
+      <div class="finish-card">
+        <div style="font-size: 3rem; margin-bottom: 4px;">🎉</div>
+        <h2 style="font-size: 2rem; color: var(--dark-green); margin-bottom: 6px;">太棒了！今天順利完成了！</h2>
+        <p style="font-size: 1.05rem; color: var(--text-muted); margin-bottom: 12px;">
+          你平穩呼吸、好勇敢！看，小花朵在陽光下為你盛開慶祝呢！
+        </p>
+
+        <!-- 盛開小花群 -->
+        <div class="garden-cheer">
+          <div class="flower-bounce" style="width: 85px; height: 110px;">
+            <svg viewBox="0 0 100 120" fill="none">
+              <path d="M50 120 Q48 85 50 60" stroke="#4CAF50" stroke-width="7" stroke-linecap="round"/>
+              <ellipse cx="38" cy="80" rx="14" ry="7" fill="#66BB6A" transform="rotate(-30 38 80)"/>
+              <circle cx="50" cy="42" r="26" fill="#FF8DA1"/>
+              <circle cx="50" cy="42" r="13" fill="#FFF275"/>
+            </svg>
+          </div>
+          <div class="flower-bounce" style="width: 115px; height: 140px;">
+            <svg viewBox="0 0 120 140" fill="none">
+              <path d="M60 140 Q63 85 60 55" stroke="#388E3C" stroke-width="8" stroke-linecap="round"/>
+              <ellipse cx="80" cy="85" rx="18" ry="9" fill="#4CAF50" transform="rotate(35 80 85)"/>
+              <ellipse cx="40" cy="98" rx="16" ry="8" fill="#4CAF50" transform="rotate(-35 40 98)"/>
+              <!-- 花盤 -->
+              <circle cx="60" cy="46" r="32" fill="#FFA726"/>
+              <circle cx="60" cy="46" r="16" fill="#FFF59D"/>
+              <circle cx="55" cy="44" r="3" fill="#5D4037"/>
+              <circle cx="65" cy="44" r="3" fill="#5D4037"/>
+              <path d="M57 52 Q60 56 63 52" stroke="#5D4037" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <div class="flower-bounce" style="width: 85px; height: 110px;">
+            <svg viewBox="0 0 100 120" fill="none">
+              <path d="M50 120 Q52 80 50 60" stroke="#4CAF50" stroke-width="7" stroke-linecap="round"/>
+              <ellipse cx="65" cy="80" rx="14" ry="7" fill="#66BB6A" transform="rotate(25 65 80)"/>
+              <circle cx="50" cy="42" r="26" fill="#4DD0E1"/>
+              <circle cx="50" cy="42" r="13" fill="#FFF9C4"/>
+            </svg>
+          </div>
+        </div>
+
+        <button class="btn btn-primary" id="btn-finish-home" style="margin-top: 8px;">
+          🌸 回到首頁探險
+        </button>
+      </div>
+    </section>
+
+    <footer class="disclaimer-text">
+      [原型用途] 本介面為學術展示與互動設計功能測試原型，不連接醫療設備，亦不作為實際醫療計時與診斷治療依據。
+    </footer>
+
+  </div>
+
+  <script>
+    /* =========================================================
+       植物 SVG 四階段 (0% 種子、30% 發芽、60% 長葉、100% 開花)
+    ========================================================= */
+    const PLANT_SVGS = {
+      // 0%: 沈睡吸飽水分的種子
+      seed: `
+        <svg class="svg-full" viewBox="0 0 220 220" fill="none">
+          <ellipse cx="110" cy="180" rx="80" ry="22" fill="#E8D9CB" />
+          <ellipse cx="110" cy="174" rx="68" ry="15" fill="#D3BFAF" />
+          <g transform="translate(0, 5)">
+            <ellipse cx="110" cy="138" rx="34" ry="40" fill="#C59263" />
+            <circle cx="98" cy="141" r="4" fill="#FFA5A5" opacity="0.8"/>
+            <circle cx="122" cy="141" r="4" fill="#FFA5A5" opacity="0.8"/>
+            <path d="M94 133 Q98 128 102 133" stroke="#4A3423" stroke-width="2.5" stroke-linecap="round"/>
+            <path d="M118 133 Q122 128 126 133" stroke="#4A3423" stroke-width="2.5" stroke-linecap="round"/>
+            <path d="M107 146 Q110 149 113 146" stroke="#4A3423" stroke-width="2" stroke-linecap="round"/>
+          </g>
+          <circle cx="110" cy="85" r="4.5" fill="#87CEEB" opacity="0.5"/>
+          <circle cx="124" cy="68" r="6" fill="#87CEEB" opacity="0.6"/>
+        </svg>
+      `,
+
+      // 30%: 破土初生可愛雙葉小芽
+      sprout: `
+        <svg class="svg-full" viewBox="0 0 220 220" fill="none">
+          <ellipse cx="110" cy="182" rx="80" ry="22" fill="#E8D9CB" />
+          <ellipse cx="110" cy="176" rx="68" ry="15" fill="#D3BFAF" />
+          <path d="M110 176 Q108 140 110 116" stroke="#7CB342" stroke-width="8" stroke-linecap="round"/>
+          <!-- 嫩葉 -->
+          <path d="M110 126 C92 120 84 102 94 88 C108 92 110 112 110 126Z" fill="#8BC34A"/>
+          <path d="M110 126 C128 120 136 102 126 88 C112 92 110 112 110 126Z" fill="#9CCC65"/>
+          <!-- 表情 -->
+          <circle cx="106" cy="114" r="2.5" fill="#33691E"/>
+          <circle cx="114" cy="114" r="2.5" fill="#33691E"/>
+          <path d="M108 119 Q110 122 112 119" stroke="#33691E" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+      `,
+
+      // 60%: 枝幹結實、多片茂盛大葉與小花苞
+      growing: `
+        <svg class="svg-full" viewBox="0 0 220 220" fill="none">
+          <ellipse cx="110" cy="185" rx="85" ry="22" fill="#E8D9CB" />
+          <ellipse cx="110" cy="179" rx="72" ry="15" fill="#D3BFAF" />
+          <path d="M110 180 Q106 120 110 70" stroke="#4CAF50" stroke-width="10" stroke-linecap="round"/>
+          <!-- 左右大葉 -->
+          <path d="M108 135 C72 130 62 102 80 88 C100 95 106 122 108 135Z" fill="#66BB6A"/>
+          <path d="M112 115 C148 110 158 82 140 68 C120 75 114 102 112 115Z" fill="#81C784"/>
+          <!-- 頂部待放花苞 -->
+          <ellipse cx="110" cy="62" rx="15" ry="18" fill="#FF80AB"/>
+          <path d="M100 68 Q110 80 120 68" fill="#43A047"/>
+          <circle cx="106" cy="60" r="2.5" fill="#880E4F"/>
+          <path d="M113 58 Q116 61 119 58" stroke="#880E4F" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+      `,
+
+      // 100%: 盛開燦爛笑容的向日葵花朵
+      bloomed: `
+        <svg class="svg-full" viewBox="0 0 220 220" fill="none">
+          <ellipse cx="110" cy="188" rx="85" ry="22" fill="#E8D9CB" />
+          <ellipse cx="110" cy="182" rx="72" ry="15" fill="#D3BFAF" />
+          <path d="M110 182 Q114 125 110 72" stroke="#388E3C" stroke-width="11" stroke-linecap="round"/>
+          <path d="M108 140 C68 135 55 106 75 88 C99 94 106 126 108 140Z" fill="#4CAF50"/>
+          <path d="M112 120 C152 115 165 86 145 68 C121 74 114 106 112 120Z" fill="#66BB6A"/>
+          <!-- 盛開花冠 -->
+          <g transform="translate(110, 64)">
+            <circle cx="0" cy="-25" r="17" fill="#FF8A80"/>
+            <circle cx="18" cy="-18" r="17" fill="#FF80AB"/>
+            <circle cx="25" cy="0" r="17" fill="#FF8A80"/>
+            <circle cx="18" cy="18" r="17" fill="#FF80AB"/>
+            <circle cx="0" cy="25" r="17" fill="#FF8A80"/>
+            <circle cx="-18" cy="18" r="17" fill="#FF80AB"/>
+            <circle cx="-25" cy="0" r="17" fill="#FF8A80"/>
+            <circle cx="-18" cy="-18" r="17" fill="#FF80AB"/>
+            <!-- 蕊心 -->
+            <circle cx="0" cy="0" r="22" fill="#FFCA28"/>
+            <circle cx="-7" cy="-4" r="3" fill="#5D4037"/>
+            <circle cx="7" cy="-4" r="3" fill="#5D4037"/>
+            <circle cx="-11" cy="2" r="3" fill="#FF8A80" opacity="0.7"/>
+            <circle cx="11" cy="2" r="3" fill="#FF8A80" opacity="0.7"/>
+            <path d="M-5 5 Q0 11 5 5" stroke="#5D4037" stroke-width="2.5" stroke-linecap="round"/>
+          </g>
+        </svg>
+      `
+    };
+
+    /* =========================================================
+       系統狀態與時間管理
+    ========================================================= */
+    const State = {
+      totalDurationSec: 30,  // 設定總時長
+      remainingSec: 30,       // 剩餘秒數 (浮點)
+      animFrameId: null,      // 計時器 requestAnimationFrame
+      lastTimestamp: null,    // 前次物理時間戳
+      isPaused: false,
+      currentStageKey: null   // 'seed' | 'sprout' | 'growing' | 'bloomed'
+    };
+
+    // DOM 元素
+    const screens = {
+      home: document.getElementById('screen-home'),
+      session: document.getElementById('screen-session'),
+      complete: document.getElementById('screen-complete')
+    };
+
+    const timeChips = document.querySelectorAll('#time-chips .time-chip');
+    const customTimeBox = document.getElementById('custom-time-box');
+    const customMinInput = document.getElementById('custom-min');
+    const customSecInput = document.getElementById('custom-sec');
+
+    const btnStart = document.getElementById('btn-start');
+    const btnPauseResume = document.getElementById('btn-pause-resume');
+    const btnRestart = document.getElementById('btn-restart');
+    const btnStopExit = document.getElementById('btn-stop-exit');
+    const btnFinishHome = document.getElementById('btn-finish-home');
+    const btnToggleFs = document.getElementById('btn-toggle-fs');
+
+    const clockDisplay = document.getElementById('clock-display');
+    const progressBar = document.getElementById('progress-bar');
+    const progressText = document.getElementById('progress-text');
+    const stageBadge = document.getElementById('stage-badge');
+    const plantContainer = document.getElementById('plant-container');
+
+    /* =========================================================
+       畫面導航與計時器管理（避免計時疊加飄移）
+    ========================================================= */
+    function switchScreen(screenName) {
+      Object.keys(screens).forEach(key => {
+        if (key === screenName) {
+          screens[key].classList.add('active');
+        } else {
+          screens[key].classList.remove('active');
+        }
+      });
+    }
+
+    function stopTimer() {
+      if (State.animFrameId !== null) {
+        cancelAnimationFrame(State.animFrameId);
+        State.animFrameId = null;
+      }
+      State.lastTimestamp = null;
+    }
+
+    function startTimer() {
+      stopTimer(); // 防禦：確保永遠只有一個活動中的計時迴圈
+      State.lastTimestamp = performance.now();
+
+      function tick(now) {
+        if (!State.isPaused) {
+          const deltaSec = (now - State.lastTimestamp) / 1000;
+          State.remainingSec = Math.max(0, State.remainingSec - deltaSec);
+          renderUI();
+
+          if (State.remainingSec <= 0) {
+            handleComplete();
+            return;
+          }
+        }
+        State.lastTimestamp = now;
+        State.animFrameId = requestAnimationFrame(tick);
+      }
+
+      State.animFrameId = requestAnimationFrame(tick);
+    }
+
+    function formatTime(totalSeconds) {
+      const s = Math.ceil(totalSeconds);
+      const m = Math.floor(s / 60);
+      const sec = s % 60;
+      return `${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`;
+    }
+
+    /* =========================================================
+       UI 與植物成長狀態更新
+    ========================================================= */
+    function renderUI() {
+      // 1. 更新剩餘時間
+      clockDisplay.textContent = formatTime(State.remainingSec);
+
+      // 2. 計算比例
+      const total = State.totalDurationSec;
+      const elapsed = Math.max(0, total - State.remainingSec);
+      const percent = total > 0 ? Math.min(100, Math.floor((elapsed / total) * 100)) : 0;
+
+      progressBar.style.width = `${percent}%`;
+      progressText.textContent = `${percent}%`;
+
+      // 3. 判定四階段：0%種子、30%發芽、60%長葉、100%開花
+      let stageKey = 'seed';
+      let stageText = '生長階段：沈睡種子 (0%)';
+
+      if (percent >= 100) {
+        stageKey = 'bloomed';
+        stageText = '生長階段：花兒燦爛盛開！ (100%)';
+      } else if (percent >= 60) {
+        stageKey = 'growing';
+        stageText = '生長階段：長出健康綠葉與花苞 (60%)';
+      } else if (percent >= 30) {
+        stageKey = 'sprout';
+        stageText = '生長階段：探出可愛小嫩芽 (30%)';
+      }
+
+      // 階段變化時再更新 DOM，確保高幀率繪製不卡頓
+      if (State.currentStageKey !== stageKey) {
+        State.currentStageKey = stageKey;
+        plantContainer.innerHTML = PLANT_SVGS[stageKey];
+        stageBadge.textContent = stageText;
+      }
+    }
+
+    function handleComplete() {
+      stopTimer();
+      State.remainingSec = 0;
+      renderUI();
+      // 稍微留滯 0.4 秒觀賞 100% 盛開，再切至歡慶頁面
+      setTimeout(() => {
+        switchScreen('complete');
+      }, 400);
+    }
+
+    /* =========================================================
+       事件綁定與使用者互動
+    ========================================================= */
+
+    // 時間籌碼點擊選擇
+    timeChips.forEach(chip => {
+      chip.addEventListener('click', () => {
+        timeChips.forEach(c => c.classList.remove('active'));
+        chip.classList.add('active');
+
+        const mode = chip.dataset.mode;
+        if (mode === 'custom') {
+          customTimeBox.classList.add('show');
+        } else {
+          customTimeBox.classList.remove('show');
+          State.totalDurationSec = parseInt(chip.dataset.seconds, 10);
+        }
+      });
+    });
+
+    // 計算最終設定秒數
+    function resolveSelectedSeconds() {
+      const activeChip = document.querySelector('#time-chips .time-chip.active');
+      if (activeChip && activeChip.dataset.mode === 'custom') {
+        const min = Math.max(0, parseInt(customMinInput.value, 10) || 0);
+        const sec = Math.max(0, parseInt(customSecInput.value, 10) || 0);
+        const total = (min * 60) + sec;
+        return total > 0 ? total : 30; // 防呆預設至少 30 秒
+      }
+      return parseInt(activeChip.dataset.seconds, 10) || 30;
+    }
+
+    // 開始陪伴
+    btnStart.addEventListener('click', () => {
+      State.totalDurationSec = resolveSelectedSeconds();
+      State.remainingSec = State.totalDurationSec;
+      State.isPaused = false;
+      State.currentStageKey = null;
+
+      btnPauseResume.textContent = '⏸️ 暫停';
+      btnPauseResume.className = 'btn btn-secondary';
+
+      renderUI();
+      switchScreen('session');
+      startTimer();
+    });
+
+    // 暫停 / 繼續
+    btnPauseResume.addEventListener('click', () => {
+      if (!State.isPaused) {
+        State.isPaused = true;
+        btnPauseResume.textContent = '▶️ 繼續陪伴';
+        btnPauseResume.className = 'btn btn-coral';
+      } else {
+        State.isPaused = false;
+        State.lastTimestamp = performance.now(); // 重置時間戳，避免跳秒
+        btnPauseResume.textContent = '⏸️ 暫停';
+        btnPauseResume.className = 'btn btn-secondary';
+      }
+    });
+
+    // 重新開始當前階段
+    btnRestart.addEventListener('click', () => {
+      stopTimer();
+      State.remainingSec = State.totalDurationSec;
+      State.isPaused = false;
+      State.currentStageKey = null;
+
+      btnPauseResume.textContent = '⏸️ 暫停';
+      btnPauseResume.className = 'btn btn-secondary';
+
+      renderUI();
+      startTimer();
+    });
+
+    // 中途退出返回首頁
+    btnStopExit.addEventListener('click', () => {
+      stopTimer();
+      switchScreen('home');
+    });
+
+    // 治療完成返回首頁
+    btnFinishHome.addEventListener('click', () => {
+      stopTimer();
+      switchScreen('home');
+    });
+
+    // 全螢幕切換
+    btnToggleFs.addEventListener('click', () => {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(() => {});
+        btnToggleFs.textContent = '✕ 離開全螢幕';
+      } else {
+        if (document.exitFullscreen) {
+          document.exitFullscreen().catch(() => {});
+          btnToggleFs.textContent = '⛶ 全螢幕';
+        }
+      }
+    });
+
+    document.addEventListener('fullscreenchange', () => {
+      if (!document.fullscreenElement) {
+        btnToggleFs.textContent = '⛶ 全螢幕';
+      }
+    });
+
+    // 初始渲染
+    renderUI();
+  </script>
+</body>
+</html>
